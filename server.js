@@ -35,20 +35,20 @@ require('http').createServer(async (req, res) => {
         max_tokens: 1000,
         messages: [{
           role: 'user',
-          content: `Analyze these emails and identify ANY that contain action items, reminders, deadlines, requests, or tasks — including emails the user sent to themselves as reminders. Be generous in what you consider actionable. Include things like:
-- Deadlines or submissions ("submit by", "due tomorrow", "by end of week")
-- Requests from others ("can you", "please", "could you")
-- Self-reminders (emails sent to self)
-- Follow-ups needed
+          content: `You are a task detector. Your ONLY job is to find emails that require Mohammad to DO something.
 
-Only skip purely promotional/marketing emails with no personal action required.
+ALWAYS flag these as tasks:
+- Any email with "submit", "please", "need you to", "reminder", "due", "by tomorrow", "action needed"
+- Emails from the user to themselves (self-reminders)
+- Requests from colleagues or managers
 
-Respond with ONLY a JSON array, no markdown, no explanation:
-[{"task":"Submit weekly workday requirement","priority":"p1","due":"Tomorrow","from":"Self reminder"}]
+IGNORE: bank alerts, invoices, flight prices, newsletters, system notifications
 
-If no actionable emails, return: []
+Return ONLY a JSON array. No text, no markdown, no explanation. Just the array.
+Example: [{"task":"Submit weekly workday requirement","priority":"p1","due":"Tomorrow","from":"Self"}]
+If nothing actionable: []
 
-Emails:
+Emails to check:
 ${emailList}`
         }]
       });
