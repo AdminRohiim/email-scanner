@@ -31,44 +31,30 @@ require('http').createServer(async (req, res) => {
     try {
       const parsed = JSON.parse(body);
       const emails = parsed.emails || [];
-      
-      console.log('Received', emails.length, 'emails');
-      emails.forEach((e, i) => console.log(`Email ${i+1}: ${e.subject} | ${e.from}`));
+      console.log('Received emails:', emails.length);
 
-      if (!emails.length) {
-        res.writeHead(200);
-        res.end(JSON.stringify({ suggestions: [] }));
-        return;
-      }
-
-      // Send ALL emails to AI, let it decide
-      const emailList = emails.map((e, i) => 
+      const emailList = emails.map((e, i) =>
         `${i+1}. From: ${e.from}\nSubject: ${e.subject}\nSnippet: ${e.snippet}`
       ).join('\n\n');
 
-      const prompt = `You are reviewing emails for Mohammad Rohiim. Find ONLY emails that require Mohammad to personally take action.
-
-Flag these as tasks:
-- "submit", "submission", "please send", "need you to", "reminder", "due", "by tomorrow", "mark these papers", "review"
-- Emails sent from Mohammad to himself as reminders
-- Personal requests from real people
-
-Do NOT flag: GitHub security alerts, Netlify service emails, bank transaction receipts, promotional emails, automated system notifications, flight price alerts
-
-Return ONLY a valid JSON array, nothing else:
-[{"task":"task description","priority":"p1 or p2 or p3","due":"when","from":"sender name"}]
-
-If nothing actionable, return exactly: []
-
-Emails:
-${emailList}`;
-
-      console.log('Sending', emails.length, 'emails to Anthropic');
+      console.log('Full email list:\n', emailList);
 
       const payload = JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
+        messages: [{
+          role: 'user',
+          content: `Find emails requiring Mohammad to take action. Return ONLY a JSON array.
+
+Examples of tasks: submitting work, marking papers, replying to colleagues, paying bills.
+Ignore: GitHub alerts, Netlify alerts, bank transaction receipts, promotions, flight prices.
+
+Format: [{"task":"description","priority":"p1","due":"when","from":"who"}]
+If none: []
+
+Emails:
+${emailList}`
+        }]
       });
 
       const result = await httpsPost('api.anthropic.com', '/v1/messages', {
@@ -79,33 +65,22 @@ ${emailList}`;
       }, payload);
 
       console.log('Anthropic status:', result.status);
-
       const aiData = JSON.parse(result.body);
-
-      if (aiData.error) {
-        console.error('Anthropic error:', JSON.stringify(aiData.error));
-        res.writeHead(500);
-        res.end(JSON.stringify({ error: aiData.error.message, suggestions: [] }));
-        return;
-      }
+      console.log('AI raw response:', result.body.substring(0, 500));
 
       const text = aiData.content?.[0]?.text || '[]';
-      console.log('AI response:', text);
-
       let suggestions = [];
       try {
-        const clean = text.trim().replace(/```json|```/g, '').trim();
-        suggestions = JSON.parse(clean);
+        suggestions = JSON.parse(text.trim().replace(/```json|```/g, '').trim());
       } catch(e) {
-        console.error('Parse error:', e.message);
-        suggestions = [];
+        console.error('Parse error:', e.message, 'text:', text);
       }
 
-      console.log('Suggestions:', suggestions.length);
+      console.log('Suggestions:', JSON.stringify(suggestions));
       res.writeHead(200);
       res.end(JSON.stringify({ suggestions }));
     } catch(err) {
-      console.error('Server error:', err.message);
+      console.error('Error:', err.message);
       res.writeHead(500);
       res.end(JSON.stringify({ error: err.message, suggestions: [] }));
     }
