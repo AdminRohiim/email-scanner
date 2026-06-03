@@ -199,5 +199,11 @@ app.post('/voice-tasks/sync', async (req, res) => {
 // ── HEALTH CHECK ──
 app.get('/', (req, res) => res.json({ status: 'ok', service: 'PA Voice Backend' }));
 
+// Keep-alive ping to prevent Render free tier spin-down
+setInterval(() => {
+  fetch('https://email-scanner-yar2.onrender.com/')
+    .catch(() => {});
+}, 14 * 60 * 1000);
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`PA backend running on port ${PORT}`));
