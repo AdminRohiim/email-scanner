@@ -44,6 +44,7 @@ async function transcribeAudio(fileBuffer, mimeType) {
   const form = new FormData();
   form.append('file', fileBuffer, { filename: 'audio.ogg', contentType: mimeType || 'audio/ogg' });
   form.append('model', 'whisper-large-v3');
+  form.append('language', 'en');
   form.append('response_format', 'json');
 
   const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
@@ -175,7 +176,8 @@ app.post('/webhook', async (req, res) => {
 // ── REST ENDPOINT: Dashboard polls this ──
 app.get('/voice-tasks', async (req, res) => {
   try {
-    const tasks = await redisGet('pa_voice_tasks') || [];
+    const raw = await redisGet('pa_voice_tasks');
+    const tasks = Array.isArray(raw) ? raw : [];
     res.json({ tasks });
   } catch (err) {
     res.status(500).json({ error: err.message });
