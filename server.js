@@ -144,7 +144,8 @@ app.post('/webhook', async (req, res) => {
     const task = parseTask(transcript);
 
     // Save to Upstash
-    const existing = await redisGet('pa_voice_tasks') || [];
+    const raw = await redisGet('pa_voice_tasks');
+    const existing = Array.isArray(raw) ? raw : [];
     const newTask = {
       id: `voice_${Date.now()}`,
       name: task.name,
