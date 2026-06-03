@@ -95,11 +95,15 @@ function parseTask(transcript) {
 app.post('/webhook', async (req, res) => {
   res.sendStatus(200); // Ack Telegram immediately
 
+  console.log('Webhook received:', JSON.stringify(req.body).slice(0, 200));
+
   const message = req.body?.message;
-  if (!message) return;
+  if (!message) { console.log('No message in body'); return; }
 
   const chatId = message.chat?.id;
   const voice = message.voice || message.audio;
+
+  console.log('chatId:', chatId, 'TG_CHAT:', TG_CHAT, 'has voice:', !!voice);
 
   // Only handle voice/audio from your own chat
   if (String(chatId) !== String(TG_CHAT)) {
@@ -146,6 +150,7 @@ app.post('/webhook', async (req, res) => {
 
     // Save to Upstash
     const raw = await redisGet('pa_voice_tasks');
+    console.log('Redis get result:', JSON.stringify(raw).slice(0, 100));
     const existing = Array.isArray(raw) ? raw : [];
     const newTask = {
       id: `voice_${Date.now()}`,
@@ -158,6 +163,7 @@ app.post('/webhook', async (req, res) => {
     };
     existing.push(newTask);
     await redisSet('pa_voice_tasks', existing);
+    console.log('Saved task to Redis:', newTask.name);
 
     const priorityEmoji = { p1: '🔴', p2: '🟡', p3: '🟢', p4: '⚪' }[task.priority] || '🟡';
     await sendTG(chatId,
